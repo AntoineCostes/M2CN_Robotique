@@ -1,0 +1,229 @@
+{
+	"name": "Poppy Ergo OSC",
+	"type": "OSC",
+	"path": "M2 Création Numérique",
+
+	"version": "1.0.0",
+	"description": "Pilotage de Poppy Ergo par messages OSC",
+
+	"hasInput": true,
+	"hasOutput": true,
+
+	"hideDefaultCommands": false,
+	"hideDefaultParameters": [
+		"splitArguments", 
+		"useHierarchy", 
+		"autoFeedback", 
+		"colorSendMode", 
+		"booleanSendMode", 
+		"clearValues", 
+		"oscOutputs/oscOutput/local", 
+		"oscOutputs/oscOutput/listenToFeedback",
+		"pass_through"
+	],
+
+	"defaults":
+	{
+		"OSC Outputs":
+		{
+			"OSC Output":
+			{
+				"local":false,
+				"remoteHost":"10.0.0.101"
+			}
+		}
+	},
+	
+	"parameters":
+	{
+		"Model":
+		{
+			"type":"Enum",
+			"options":{"Lily":0, "Colza":1, "Mimosa":2, "Bouton d'or":3, "Fougère":4}
+		}
+	},
+
+	"scripts":
+	[
+		"poppy.js"
+	],
+
+	"values":
+	{
+		"Angle 1":
+		{
+			"type":"Integer",
+			"default":0,
+      		"readOnly":true
+		},
+		"Angle 2":
+		{
+			"type":"Integer",
+			"default":0,
+      		"readOnly":true
+		},
+		"Angle 3":
+		{
+			"type":"Integer",
+			"default":0,
+      		"readOnly":true
+		},
+		"Angle 4":
+		{
+			"type":"Integer",
+			"default":0,
+      		"readOnly":true
+		},
+		"Angle 5":
+		{
+			"type":"Integer",
+			"default":0,
+      		"readOnly":true
+		},
+		"Angle 6":
+		{
+			"type":"Integer",
+			"default":0,
+      		"readOnly":true
+		}
+	},
+
+	"commands":
+	{
+		"Set Leds":
+		{
+			"menu":"LED",
+			"callback":"setLeds",
+			"parameters": {
+				"Led 1":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				},
+				"Led 2":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				},
+				"Led 3":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				},
+				"Led 4":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				},
+				"Led 5":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				},
+				"Led 6":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				}
+			}
+		},
+
+		"Set All Leds":
+		{
+			"menu":"LED",
+			"callback":"setAllLeds",
+			"parameters": {
+				"colorSendMode":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				}
+			}
+		},
+
+		"Go to Zero":
+		{
+			"menu":"Motors",
+			"callback":"goToZero"
+		},
+		"Get Angles":
+		{
+			"menu":"Motors",
+			"callback":"getAngles"
+		},
+
+		"Set Angle":
+		{
+			"menu":"Motors",
+			"callback":"setAngle",
+			"parameters":
+			{
+				"Duration (sec)":
+				{
+					"type":"Float",
+					"min":0,
+					"max":10
+				},
+				"Index":
+				{
+					"type":"Integer",
+					"min":1,
+					"max":6
+				},
+				"Angle":
+				{
+					"type":"Integer",
+					"min":-90,
+					"max":90
+				}
+			}
+		},
+		"Add to Angle":
+		{
+			"menu":"Motors",
+			"callback":"addToAngle",
+			"parameters":
+			{
+				"Duration (sec)":
+				{
+					"type":"Float",
+					"min":0.1,
+					"max":20
+				},
+				"Index":
+				{
+					"type":"Integer",
+					"min":1,
+					"max":6
+				},
+				"Angle":
+				{
+					"type":"Integer",
+					"min":-90,
+					"max":90
+				}
+			}
+		},
+
+
+		"Disable":
+		{
+			"menu":"Motors",
+			"callback":"disable",
+			"parameters":
+			{
+				"Index":
+				{
+					"type":"Integer",
+					"min":1,
+					"max":6
+				}
+			}
+		},
+		"Disable All":
+		{
+			"menu":"Motors",
+			"callback":"disableAll"
+		}
+	}
+}
