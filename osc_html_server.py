@@ -122,15 +122,17 @@ def get_position(dxl_id):
     else:
         position, dxl_comm_result, dxl_error = packet_handler.read2ByteTxRx(port_handler, dxl_id, ADDR_PRESENT_POSITION)
         if dxl_comm_result != dxl.COMM_SUCCESS:
+            print("ERROR (COMM) failed reading position "+str(dxl_id))
             return None, packet_handler.getTxRxResult(dxl_comm_result)
         elif dxl_error != 0:
+            print("ERROR (DXL) failed reading position "+str(dxl_id))
             return None, packet_handler.getRxPacketError(dxl_error)
         return int(-150+position*300/1023),0
 
 ######################## Threaded callbacks ########################
 
 def update():
-    global startPose, targetPoses, lastUpdateTime, motionStartTime, RUNNING, UPDATE_INTERVAL_SEC, newTarget
+    global startPose, targetPoses, lastUpdateTime, motionStartTime, RUNNING, UPDATE_INTERVAL_SEC, DEBUG
     while RUNNING:
         osc_process()
 
@@ -146,11 +148,10 @@ def update():
 
                 # if motion duration expired
                 if (t-motionStartTime) > currentMotionDuration: 
-                    #print("target reached")
-                    #print(t-motionStartTime)
-                    #print(currentMotionDuration)
-                    targetPoses.pop(0) # remove reached targetPosition
-                    motionStartTime = t # start new motion
+                    print("target reached")
+                    sendPositions()
+                    lastPose = targetPoses.pop(0) # remove reached targetPosition
+                    motionStartTime = t # start new motion (if there are more targets)
                     updateStartPose()
 
                     if len(targetPoses)>0:
@@ -166,16 +167,16 @@ def update():
             lastUpdateTime = t
 
 def updateStartPose():
-    global startPose
-    startPose = [get_position(i)[0] if get_position(i)[0] is not None else 0 for i in range(1,7)]
-    startPose.append(0) # duration
-    if DEBUG:
-        print("update start pose: " +str(startPose))
+    global startPose, DEBUG
+    startPose = [get_position(i)[0] for i in range(1,7)]
+    startPose.append(0) # dummy duration
+    # if DEBUG:
+    #     print("update start pose: " +str(startPose))
     sendPositions()
     return startPose
     
 def setTargetPoses(newPoses):
-    global targetPoses, motionStartTime
+    global targetPoses, motionStartTime, DEBUG
 
     if newPoses is None:
         #print("STOP")
@@ -184,28 +185,31 @@ def setTargetPoses(newPoses):
 
     if DEBUG:
         print("set target: "+str(newPoses))
+
     # check integrity
     for pose in newPoses:
         if len(pose) != 7:
             print("ERROR pose not valid")
             return False
-    
-    motionStartTime=time.time()
-    newTarget = newPoses.copy()
-    newTarget.insert(0, updateStartPose()) # insert a dummy position
-    targetPoses = newTarget
-    if DEBUG:
-        print("targetPoses: "+str(targetPoses))
+        
+    updateStartPose() # start the new motion from current position
+    motionStartTime=time.time() # start the new motion now
+    targetPoses = newPoses.copy()
+    #print("targetPoses: "+str(targetPoses))
     return True
 
 def sendPositions():
     global CLIENT_NAME
-    print("send positions to "+CLIENT_NAME)
+    #print("send positions to "+CLIENT_NAME)
     #msg = oscbuildparse.OSCMessage("/positions", ",iiiiii", [int(get_position(i)[0]) for i in range(1, 7)])
     #osc_send(msg, "client")
     for i in range(1, 7):
         motorIndex = 7-i # 6 to 1
-        msg = oscbuildparse.OSCMessage("/angle/"+str(i), ",i", [int(get_position(motorIndex)[0])])
+        angle, errormsg = get_position(motorIndex)
+        if angle is None:
+            print("ERROR on motor "+str(motorIndex))
+            print(errormsg)
+        msg = oscbuildparse.OSCMessage("/angle/"+str(i), ",i", [404 if angle is None else angle])
         osc_send(msg, CLIENT_NAME)
 
 ######################## HTTP routing ########################
@@ -272,7 +276,7 @@ def initOSCClient(targetIp, targetPort, name):
         
 def gotOSCMsg(address, typetags):
     global DEBUG
-    if (DEBUG):
+    if DEBUG:
         print("got OSC: "+  address + " typetags: " + typetags)
     
 
@@ -286,13 +290,13 @@ def setPositions(typetags, *args):
         duration = args[0]
         
         if duration <= MINIMUM_DURATION: 
-           print("instant pose")
+           #print("instant pose")
            for motorIndex in range(1,7): # 1 to 6
                 set_position(motorIndex, args[motorIndex])
         else:
-            print("go to pose")
-            pose = [args[6], args[5], args[4], args[3], args[2], args[1], args[0]] # duration after 6 positions
-            #pose = args.flip()
+            #print("go to pose")
+            #args.reverse()
+            pose = [args[6], args[5], args[4], args[3], args[2], args[1], args[0]] # reverse 6 positions then append duration
             setTargetPoses([pose])
             
     # index, value
@@ -308,7 +312,7 @@ def setPositions(typetags, *args):
             setTargetPoses(None) # interrupt current motion
             set_position(motorIndex, pos)
         else:
-            targetPose = [int(get_position(i)[0]) for i in range(1,7)]
+            targetPose = [get_position(i)[0] for i in range(1,7)]
             targetPose.append(duration)
             targetPose[motorIndex-1] = pos
             setTargetPoses([targetPose])
@@ -345,13 +349,13 @@ def setPositions(typetags, *args):
 def addToPosition(typetags, *args):
     # index, value
     if (typetags == ",ii"):
-        index = 7-args[0]
-        value = min(90, max(-90, int(get_position(index)[0]) + args[1]))
-        set_position(index, value)
+        motorIndex = 7-args[0]
+        currentPos = get_position(motorIndex)[0]
+        if currentPos is not None:
+            value = min(90, max(-90, currentPos + args[1]))
+            set_position(motorIndex, value)
         
 def setLeds(typetags, *args):
-    print(args)
-
     # 6 values
     if (typetags == ",ssssss"):
         for index, val in enumerate(args):
@@ -359,8 +363,9 @@ def setLeds(typetags, *args):
             set_led(ledIndex, val)
             
     if (typetags == ",iiiiii"):
+        #args.reverse() # 6 to 1
         for index, val in enumerate(args):
-            ledIndex = index + 1
+            ledIndex = 6 - index # 6 to 1
             colors =["off", "red", "green", "yellow", "blue", "purple", "cyan", "white"]
             set_led(ledIndex, colors[val])
            
