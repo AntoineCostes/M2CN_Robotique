@@ -41,6 +41,11 @@ function oscEvent(address, args) {
 	if (address == "/angle/6") local.values.angle6.set(args[0]);
 }
 
+function setLed(index, color)
+{
+	local.send("/leds/set", [index, color]);
+}
+
 function setLeds(led1, led2, led3, led4, led5, led6)
 {
 	local.send("/leds/set", [led1, led2, led3, led4, led5, led6]);
@@ -53,6 +58,7 @@ function setAllLeds(color)
 
 function getAngles(servo, value)
 {
+	handshake();
 	local.send("/motors/get");
 }
 
@@ -66,18 +72,22 @@ function disableAll()
 	local.send("/motors/set", [None]);
 }
 
-function goToZero()
+function goToZero(duration)
 {
-	local.send("/motors/set", [0]);
+	local.send("/motors/set", [duration, 0]);
 }
 
-function setAngle(duration, index, pos)
+function gotToAngle(duration, index, pos)
 {
 	local.send("/motors/set", [duration, index, pos]);
 }
 
+function goToPose(duration, angle1, angle2, angle3, angle4, angle5, angle6)
+{
+	local.send("/motors/set", [duration, angle1, angle2, angle3, angle4, angle5, angle6]);
+}
 
 function addToAngle(duration, index, val)
 {
-	local.send("/motors/add", [index, val]);
+	local.send("/motors/add", [duration, index, val]);
 }

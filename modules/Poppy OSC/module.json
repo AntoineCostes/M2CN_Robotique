@@ -90,6 +90,25 @@
 
 	"commands":
 	{
+		"Set Led":
+		{
+			"menu":"LED",
+			"callback":"setLed",
+			"parameters":
+			{
+				"Index":
+				{
+					"type":"Integer",
+					"min":1,
+					"max":6
+				},
+				"Color":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				}
+			}
+		},
 		"Set Leds":
 		{
 			"menu":"LED",
@@ -143,24 +162,35 @@
 
 		"Go to Zero":
 		{
-			"menu":"Motors",
-			"callback":"goToZero"
-		},
-		"Get Angles":
-		{
-			"menu":"Motors",
-			"callback":"getAngles"
-		},
-
-		"Set Angle":
-		{
-			"menu":"Motors",
-			"callback":"setAngle",
+			"menu":"Move",
+			"callback":"goToZero",
 			"parameters":
 			{
 				"Duration (sec)":
 				{
 					"type":"Float",
+					"default":2,
+					"min":0,
+					"max":10
+				}
+			}
+		},
+		"Get Angles":
+		{
+			"menu":"",
+			"callback":"getAngles"
+		},
+
+		"Go to Angle":
+		{
+			"menu":"Move",
+			"callback":"gotToAngle",
+			"parameters":
+			{
+				"Duration (sec)":
+				{
+					"type":"Float",
+					"default":2,
 					"min":0,
 					"max":10
 				},
@@ -178,25 +208,50 @@
 				}
 			}
 		},
-		"Add to Angle":
+		"Go to Pose":
 		{
-			"menu":"Motors",
-			"callback":"addToAngle",
+			"menu":"Move",
+			"callback":"goToPose",
 			"parameters":
 			{
 				"Duration (sec)":
 				{
 					"type":"Float",
-					"min":0.1,
-					"max":20
+					"default":2,
+					"min":0,
+					"max":10
 				},
-				"Index":
+				"Angle 1":
 				{
 					"type":"Integer",
-					"min":1,
-					"max":6
+					"min":-90,
+					"max":90
 				},
-				"Angle":
+				"Angle 2":
+				{
+					"type":"Integer",
+					"min":-90,
+					"max":90
+				},
+				"Angle 3":
+				{
+					"type":"Integer",
+					"min":-90,
+					"max":90
+				},
+				"Angle 4":
+				{
+					"type":"Integer",
+					"min":-90,
+					"max":90
+				},
+				"Angle 5":
+				{
+					"type":"Integer",
+					"min":-90,
+					"max":90
+				},
+				"Angle 6":
 				{
 					"type":"Integer",
 					"min":-90,
@@ -208,7 +263,7 @@
 
 		"Disable":
 		{
-			"menu":"Motors",
+			"menu":"Disable",
 			"callback":"disable",
 			"parameters":
 			{
@@ -222,7 +277,7 @@
 		},
 		"Disable All":
 		{
-			"menu":"Motors",
+			"menu":"Disable",
 			"callback":"disableAll"
 		}
 	}
