@@ -18,7 +18,7 @@ function moduleParameterChanged(param)
 
 function handshake()
 {
-	local.send("/handshake", [util.getIPs()[0], local.parameters.oscInput.localPort.get(), "chataigne"]);
+	local.send("/handshake", [util.getIPs()[0], local.parameters.oscInput.localPort.get(), "chataigne-"+util.getOSInfos().computerName]);
 } 
 
 function moduleValueChanged(value) 

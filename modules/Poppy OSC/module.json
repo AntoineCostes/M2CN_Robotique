@@ -29,7 +29,7 @@
 			"OSC Output":
 			{
 				"local":false,
-				"remoteHost":"10.0.0.101"
+				"remoteHost":"10.0.0.0"
 			}
 		}
 	},
