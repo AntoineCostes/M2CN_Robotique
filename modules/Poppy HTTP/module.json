@@ -1,0 +1,188 @@
+{
+	"name": "Poppy Ergo HTTP",
+	"type": "HTTP",
+	"path": "M2 Création Numérique",
+
+	"version": "1.0.0",
+	"description": "Pilotage de Poppy Ergo par requêtes HTTP",
+
+	"hasInput": true,
+	"hasOutput": true,
+
+	"hideDefaultCommands": true,
+	"hideDefaultParameters": [
+		"protocol", "authentication", "clearValues"
+	],
+
+	"defaults":
+	{
+		"baseAddress":"http://10.0.0.101:5000/",
+		"protocol":"JSON",
+		"autoAdd":false
+	},
+
+	"scripts":
+	[
+		"poppy.js"
+	],
+
+	"values":
+	{
+		"Angle 1":
+		{
+			"type":"Integer",
+			"default":0,
+      		"readOnly":true
+		},
+		"Angle 2":
+		{
+			"type":"Integer",
+			"default":0,
+      		"readOnly":true
+		},
+		"Angle 3":
+		{
+			"type":"Integer",
+			"default":0,
+      		"readOnly":true
+		},
+		"Angle 4":
+		{
+			"type":"Integer",
+			"default":0,
+      		"readOnly":true
+		},
+		"Angle 5":
+		{
+			"type":"Integer",
+			"default":0,
+      		"readOnly":true
+		},
+		"Angle 6":
+		{
+			"type":"Integer",
+			"default":0,
+      		"readOnly":true
+		}
+	},
+
+	"commands":
+	{
+		"Set Leds":
+		{
+			"menu":"LED",
+			"callback":"setLeds",
+			"parameters": {
+				"Led 1":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				},
+				"Led 2":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				},
+				"Led 3":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				},
+				"Led 4":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				},
+				"Led 5":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				},
+				"Led 6":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				}
+			}
+		},
+		"Set All Leds":
+		{
+			"menu":"LED",
+			"callback":"setAllLeds",
+			"parameters": {
+				"colorSendMode":
+				{
+					"type":"Enum",
+					"options":{"off":0, "red":1, "green":2, "yellow":3, "blue":4, "purple":5, "cyan":6, "white":7}
+				}
+			}
+		},
+		"Get Angles":
+		{
+			"menu":"Motors",
+			"callback":"getAngles",
+		},
+
+		"Disable":
+		{
+			"menu":"Motors",
+			"callback":"disable"
+		},
+		"Go To":
+		{
+			"menu":"Motors",
+			"callback":"goTo",
+			"parameters":
+			{
+				"Duration (sec)":
+				{
+					"type":"Float",
+					"min":0.1,
+					"max":10,
+					"default":2
+				},
+				"Angle 1":
+				{
+					"type":"Integer",
+					"min":-90,
+					"max":90
+				},
+				"Angle 2":
+				{
+					"type":"Integer",
+					"min":-90,
+					"max":90
+				},
+				"Angle 3":
+				{
+					"type":"Integer",
+					"min":-90,
+					"max":90
+				},
+				"Angle 4":
+				{
+					"type":"Integer",
+					"min":-90,
+					"max":90
+				},
+				"Angle 5":
+				{
+					"type":"Integer",
+					"min":-90,
+					"max":90
+				},
+				"Angle 6":
+				{
+					"type":"Integer",
+					"min":-90,
+					"max":90
+				}
+			}
+		},
+		"Enable OSC":
+		{
+			"menu":"",
+			"callback":"enableOSC"
+		}
+	}
+}
