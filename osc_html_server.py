@@ -132,7 +132,8 @@ def get_position(dxl_id):
 ######################## Threaded callbacks ########################
 
 def update():
-    global startPose, targetPoses, lastUpdateTime, motionStartTime, RUNNING, UPDATE_INTERVAL_SEC, DEBUG
+    global targetPoses, lastPose, lastUpdateTime, motionStartTime
+    global RUNNING, UPDATE_INTERVAL_SEC, DEBUG
     while RUNNING:
         osc_process()
 
@@ -143,59 +144,87 @@ def update():
         t=time.time()
         if (t - lastUpdateTime) > UPDATE_INTERVAL_SEC:
         
-            if len(targetPoses)>0 and len(targetPoses[0])>5:
-                currentMotionDuration = targetPoses[0][6]
+            if len(targetPoses)>0: # if there is a target
+                targetPose = targetPoses[0]
 
-                # if motion duration expired
-                if (t-motionStartTime) > currentMotionDuration: 
-                    print("target reached")
-                    sendPositions()
-                    lastPose = targetPoses.pop(0) # remove reached targetPosition
-                    motionStartTime = t # start new motion (if there are more targets)
-                    updateStartPose()
+                if len(targetPose) == 0 or len(targetPose) == 3 or len(targetPose) == 7: # move 1 motor or 6 motors 
+                    if len(targetPose) == 0:
+                        currentMotionDuration = 0
+                    else:
+                        currentMotionDuration = targetPoses[0][len(targetPose)-1] # duration is the last value
 
-                    if len(targetPoses)>0:
-                        print("target next pose :" +str(targetPoses[0]))
-                else:
-                    # lerp move to target position
-                    for motorIndex in range(1, 7):
+                    # if motion duration expired
+                    if (t-motionStartTime) > currentMotionDuration: 
+                        print("target reached")
+                        sendPositions()
+
+                        reachedPose = targetPoses.pop(0) # remove reached targetPosition
+                        # store reached pos in case we cannot read the position when starting next motion
+                        if len(reachedPose) == 7: 
+                            lastPose = reachedPose # TODO check if not None
+                        if len(reachedPose) == 3:
+                            lastPose[reachedPose[0]] = reachedPose[1] # TODO check if not None
+
+                        motionStartTime = t # start new motion (if there are more targets)
+
+                        if len(targetPoses)>0:
+                            print("target next pose :" +str(targetPoses[0]))
+                    else:
+                        # lerp move to target position
                         a = (t-motionStartTime)/currentMotionDuration
-                        targetPosition = targetPoses[0][motorIndex-1]
-                        startPosition = startPose[motorIndex-1]
-                        if startPosition is not None:
-                            set_position(motorIndex, None if targetPosition is None else (1-a)*startPosition + (a)*targetPosition)
-            lastUpdateTime = t
+                        
+                        if len(targetPose) == 3: # one motor: index, angle, duration
+                            motorIndex = targetPose[0]
+                            targetAngle = targetPose[1]
+                            startAngle = lastPose[motorIndex-1]
+                            if startAngle is not None:
+                                set_position(motorIndex, None if targetAngle is None else (1-a)*startAngle + (a)*targetAngle)
+                            else:
+                                print("not moving motor "+str(motorIndex))
 
-def updateStartPose():
-    global startPose, DEBUG
-    startPose = [get_position(i)[0] for i in range(1,7)]
-    startPose.append(0) # dummy duration
-    # if DEBUG:
-    #     print("update start pose: " +str(startPose))
-    sendPositions()
-    return startPose
+                        elif len(targetPose) == 7: # 6 motors: angle1-angle6, duration
+                            for motorIndex in range(1, 7):
+                                targetAngle = targetPoses[0][motorIndex-1]
+                                startAngle = lastPose[motorIndex-1]
+                                if startAngle is not None:
+                                    set_position(motorIndex, None if targetAngle is None else (1-a)*startAngle + (a)*targetAngle)
+                                else:
+                                    print("not moving motor "+str(motorIndex))
+                                    print(lastPose)
+                                        
+                elif len(targetPose) == 0:
+                    print("STOP")
+                else:
+                    print("ERROR invalid targetPose length: "+str(len(targetPose)))
+            lastUpdateTime = t
     
 def setTargetPoses(newPoses):
-    global targetPoses, motionStartTime, DEBUG
+    global targetPoses, motionStartTime, lastPose, DEBUG
 
-    if newPoses is None:
-        #print("STOP")
-        targetPoses = [[]]
-        return True
+    if newPoses is None: # Stop
+        newPoses = [[]]
 
-    if DEBUG:
-        print("set target: "+str(newPoses))
-
-    # check integrity
+    # check poses integrity
     for pose in newPoses:
-        if len(pose) != 7:
-            print("ERROR pose not valid")
+        if not len(pose) in [0, 3, 7]:
+            print("ERROR invalid length for pose: "+str(pose))
             return False
         
-    updateStartPose() # start the new motion from current position
-    motionStartTime=time.time() # start the new motion now
+    # set current pose as lastPose, if we can read it
+    for motorIndex in range(1,7):
+        angle, errMsg = get_position(motorIndex)
+        if angle is None:
+            print("ERROR can't read position "+str(motorIndex))
+            print(errMsg)
+            print("keeping last position instead")
+            # TODO have an option do disable the motor motion instead
+        else:
+            lastPose[motorIndex-1] = angle
+
     targetPoses = newPoses.copy()
-    #print("targetPoses: "+str(targetPoses))
+    motionStartTime=time.time() # start the new motion now
+    if DEBUG:
+        print("set target: "+str(targetPoses))
     return True
 
 def sendPositions():
@@ -207,7 +236,7 @@ def sendPositions():
         motorIndex = 7-i # 6 to 1
         angle, errormsg = get_position(motorIndex)
         if angle is None:
-            print("ERROR on motor "+str(motorIndex))
+            print("ERROR sent angle "+str(motorIndex)+" is None")
             print(errormsg)
         msg = oscbuildparse.OSCMessage("/angle/"+str(i), ",i", [404 if angle is None else angle])
         osc_send(msg, CLIENT_NAME)
@@ -216,10 +245,9 @@ def sendPositions():
 
 @app.route('/set_positions', methods=['POST'])
 def handle_set_positions():
-    #print("SET POSITIONS")
     comment = "OK"
     if not setTargetPoses(request.get_json()):
-        return jsonify({"result": str(pose)+" n'a pas 7 éléments"}), 400
+        return jsonify({"result": str(pose)+" n'a pas 0, 3 ou 7 éléments"}), 400
     return jsonify({"result": comment}), 200
 
 @app.route('/set_leds', methods=['POST'])
@@ -247,8 +275,7 @@ def initOSCServer(listeningPort):
     osc_startup()
     # listen for messages on listeningPort, from any IP
     osc_udp_server("0.0.0.0", listeningPort, "localhost")
-    print("Listening for OSC messages on :")
-    print(str(listeningPort))
+    print("    Listening for OSC messages on :"+str(listeningPort))
 
     osc_method("/*", gotOSCMsg, argscheme=osm.OSCARG_ADDRESS + osm.OSCARG_TYPETAGS) # we need adress and typetags
     osc_method("/handshake", updateClient, argscheme=osm.OSCARG_DATAUNPACK)
@@ -267,8 +294,7 @@ def updateClient(ip ,port, name):
 def initOSCClient(targetIp, targetPort, name):
     global CLIENT_NAME
     osc_udp_client(targetIp, targetPort, name)
-    print("I will send OSC message to "+name+" at ")
-    print(str(targetIp)+":"+str(targetPort))
+    print("    I will send OSC message to "+name+" at "+str(targetIp)+":"+str(targetPort))
     CLIENT_NAME = name
     
     msg = oscbuildparse.OSCMessage("/hello", None, [])
@@ -284,58 +310,61 @@ def getPositions(typetags, *args):
     sendPositions()
 
 def setPositions(typetags, *args):
-    print("SET POSITIONS OSC")
-    #6 values
+    #print("SET POSITIONS OSC")
+    # set 6 angles
     if (typetags == ",fiiiiii"):
         duration = args[0]
-        
+
+        # instant pose
         if duration <= MINIMUM_DURATION: 
-           #print("instant pose")
            for motorIndex in range(1,7): # 1 to 6
                 set_position(motorIndex, args[motorIndex])
+        # go to pose
         else:
-            #print("go to pose")
-            #args.reverse()
             pose = [args[6], args[5], args[4], args[3], args[2], args[1], args[0]] # reverse 6 positions then append duration
             setTargetPoses([pose])
             
-    # index, value
-    elif (typetags == ",ii"):
+    # set one angle
+    # instant move
+    elif (typetags == ",ii"): 
         set_position(7-args[0], args[1])
-    elif (typetags == ",fii"):
+    # disable
+    elif (typetags == ",iI"): 
+        motorIndex = 7-args[0]
+        setTargetPoses(None) # interrupt current motion
+        set_position(motorIndex, None) # 6 to 1
+    # go to angle
+    elif (typetags == ",fii"): 
         duration = args[0]
         motorIndex = 7-args[1] # 6 to 1
-        pos = args[2]
+        angle = args[2]
 
         # instantaneous move
         if duration <= MINIMUM_DURATION: 
             setTargetPoses(None) # interrupt current motion
-            set_position(motorIndex, pos)
+            # TODO interrupt only this motor ?
+            set_position(motorIndex, angle)
+        # go to
         else:
-            targetPose = [get_position(i)[0] for i in range(1,7)]
-            targetPose.append(duration)
-            targetPose[motorIndex-1] = pos
-            setTargetPoses([targetPose])
-    elif (typetags == ",iI"):
-        setTargetPoses(None) # interrupt current motion
-        set_position(7-args[0], None) # 6 to 1
+            setTargetPoses([ [motorIndex, angle, duration] ])
     
     # set all            
     elif (typetags == ",i"):
+        angle = args[0]
         setTargetPoses(None) # interrupt current motion
         for motorIndex in range(1,7): # 1 to 6
-            set_position(motorIndex, args[0])
+            set_position(motorIndex, angle)
     elif (typetags == ",fi"):
         duration = args[0]
-        pos = args[1]
+        angle = args[1]
 
         # instantaneous move
         if duration <= MINIMUM_DURATION: 
             setTargetPoses(None) # interrupt current motion
             for motorIndex in range (1,7):
-                set_position(motorIndex, pos)
+                set_position(motorIndex, angle)
         else:
-            targetPose = [pos for i in range(6)]
+            targetPose = [angle for i in range(6)]
             targetPose.append(duration)
             setTargetPoses([targetPose])
     elif (typetags == ",I"):
@@ -350,26 +379,27 @@ def addToPosition(typetags, *args):
     # index, value
     if (typetags == ",ii"):
         motorIndex = 7-args[0]
-        currentPos = get_position(motorIndex)[0]
-        if currentPos is not None:
-            value = min(90, max(-90, currentPos + args[1]))
+        angle = args[1]
+        currentAngle = get_position(motorIndex)[0]
+        if currentAngle is not None:
+            value = min(90, max(-90, currentAngle + angle))
             set_position(motorIndex, value)
         
 def setLeds(typetags, *args):
-    # 6 values
+    # set 6 leds
     if (typetags == ",ssssss"):
         for index, val in enumerate(args):
             ledIndex = index + 1
             set_led(ledIndex, val)
             
-    if (typetags == ",iiiiii"):
+    elif (typetags == ",iiiiii"):
         #args.reverse() # 6 to 1
         for index, val in enumerate(args):
             ledIndex = 6 - index # 6 to 1
             colors =["off", "red", "green", "yellow", "blue", "purple", "cyan", "white"]
             set_led(ledIndex, colors[val])
            
-    # index, value 
+    # set 1 led
     elif (typetags == ",is"):
         ledIndex = 7-args[0] # 6 to 1
         color = args[i]
@@ -405,8 +435,7 @@ if __name__ == '__main__':
     lastUpdateTime =  time.time()
     motionStartTime=time.time()
     targetPoses = [[]]
-    updateStartPose()
-
+    lastPose = [0, 0, 0, 0, 0, 0, 2.0]
 
 
     try:
