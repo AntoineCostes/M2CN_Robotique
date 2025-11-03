@@ -1,0 +1,9 @@
+login : pi
+mot de passe : Caliban--33
+
+sudo raspi-config
+autologin
+ouvrir port série
+sudo apt update
+sudo apt install -y python3-dev python3-pip
+pip3 install --break-system-packages flask flask-cors dynamixel-sdk
